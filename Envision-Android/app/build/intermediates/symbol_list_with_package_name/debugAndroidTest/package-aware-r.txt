@@ -1,0 +1,3 @@
+com.example.envision.test
+style WhiteBackgroundDialogTheme
+style WhiteBackgroundTheme
