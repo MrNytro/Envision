@@ -28,10 +28,16 @@ import java.io.File;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.widget.TextView;
+
 public class MainActivity extends AppCompatActivity {
     ImageButton capture, toggleFlash, flipCamera;
     private PreviewView previewView;
     int cameraFacing = CameraSelector.LENS_FACING_BACK;
+    private CaptionGenerator captionGenerator;
+    private TextView captionTextView;
     private final ActivityResultLauncher<String> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), new ActivityResultCallback<Boolean>() {
         @Override
         public void onActivityResult(Boolean result) {
@@ -123,6 +129,8 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         Toast.makeText(MainActivity.this, "Image saved at: " + file.getPath(), Toast.LENGTH_SHORT).show();
+                        // Read the captured image and generate caption
+                        generateCaptionFromFile(file);
                     }
                 });
                 startCamera(cameraFacing);
@@ -140,6 +148,23 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+    private void generateCaptionFromFile(File file) {
+        try {
+            // Read the captured image file
+            Bitmap imageBitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
+
+            // Generate caption for the image
+            String generatedCaption = captionGenerator.generateCaption(imageBitmap);
+
+            // Display the generated caption
+            captionTextView.setText(generatedCaption);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(MainActivity.this, "Failed to generate caption: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
 
 
     private void setFlashIcon(Camera camera) {
