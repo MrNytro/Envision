@@ -14,6 +14,7 @@ drawable ic_launcher_foreground
 drawable round_camera_24
 drawable round_flip_camera_android_24
 id cameraPreview
+id captionTextView
 id capture
 id flipCamera
 id toggleFlash

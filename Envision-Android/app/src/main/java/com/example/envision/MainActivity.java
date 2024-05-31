@@ -32,12 +32,21 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.widget.TextView;
 
+import java.io.ByteArrayOutputStream;
+import android.util.Log;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+
+
 public class MainActivity extends AppCompatActivity {
     ImageButton capture, toggleFlash, flipCamera;
     private PreviewView previewView;
     int cameraFacing = CameraSelector.LENS_FACING_BACK;
     private CaptionGenerator captionGenerator;
     private TextView captionTextView;
+    private static final String TAG = "MainActivity";
+
     private final ActivityResultLauncher<String> activityResultLauncher = registerForActivityResult(new ActivityResultContracts.RequestPermission(), new ActivityResultCallback<Boolean>() {
         @Override
         public void onActivityResult(Boolean result) {
@@ -46,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,6 +65,8 @@ public class MainActivity extends AppCompatActivity {
         capture = findViewById(R.id.capture);
         toggleFlash = findViewById(R.id.toggleFlash);
         flipCamera = findViewById(R.id.flipCamera);
+        captionTextView = findViewById(R.id.captionTextView); // Add this line
+        captionGenerator = new CaptionGenerator(this); // Add this line
 
         if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             activityResultLauncher.launch(Manifest.permission.CAMERA);
@@ -154,18 +166,49 @@ public class MainActivity extends AppCompatActivity {
             // Read the captured image file
             Bitmap imageBitmap = BitmapFactory.decodeFile(file.getAbsolutePath());
 
-            // Generate caption for the image
-            String generatedCaption = captionGenerator.generateCaption(imageBitmap);
+            // Resize the image to the desired dimensions
+            Bitmap resizedBitmap = resizeImage(imageBitmap, 150528);
+
+            // Save the resized image
+            saveBitmapToFile(resizedBitmap, file);
+
+            // Generate caption for the resized image
+            String generatedCaption = captionGenerator.generateCaption(resizedBitmap);
 
             // Display the generated caption
             captionTextView.setText(generatedCaption);
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(MainActivity.this, "Failed to generate caption: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Log.e("envision", "Failed to generate caption: " + e.getMessage());
         }
     }
 
+    private Bitmap resizeImage(Bitmap imageBitmap, int desiredByteSize) {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        int quality = 100;
+        imageBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream);
 
+        while (outputStream.toByteArray().length > desiredByteSize) {
+            outputStream.reset();
+            quality -= 15; // Reduce quality by 15% instead of 10%
+            imageBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream);
+
+            // If quality reaches 0, end the loop
+            if (quality <= 0) {
+                break;
+            }
+        }
+        return BitmapFactory.decodeByteArray(outputStream.toByteArray(), 0, outputStream.size());
+    }
+
+    private void saveBitmapToFile(Bitmap bitmap, File file) {
+        try (OutputStream outputStream = new FileOutputStream(file)) {
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e(TAG, "Error saving bitmap to file: " + e.getMessage());
+        }
+    }
 
     private void setFlashIcon(Camera camera) {
         if (camera.getCameraInfo().hasFlashUnit()) {
